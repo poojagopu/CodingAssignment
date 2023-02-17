@@ -14,6 +14,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
+
 namespace MyApplication
 {
     /// <summary>
@@ -41,6 +42,11 @@ namespace MyApplication
                 Fill = Brushes.Red,
                 
             };
+
+            // Add event handler for changing the rectangle color
+            rect.MouseDown += Rect_MouseDown;
+
+
             // left property represents the distance between the left side of a control and its parent container Canvas
             // top property represents the distance between the top of a control and its parent container Canvas
 
@@ -77,6 +83,21 @@ namespace MyApplication
             Canvas.SetLeft(rect, x);
             Canvas.SetTop(rect, y);
         }
+        // learn the difference bwtween MouseButtonEventArgs and MouseEventArgs
+        private void Rect_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            Rectangle rect = (Rectangle)sender;
+
+            // Show a color dialog to select a new color
+            System.Windows.Forms.ColorDialog colorDialog = new System.Windows.Forms.ColorDialog();
+            if (colorDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                // Set the Fill property of the rectangle to the selected color
+                Color color = Color.FromArgb(colorDialog.Color.A, colorDialog.Color.R, colorDialog.Color.G, colorDialog.Color.B);
+                rect.Fill = new SolidColorBrush(color);
+                
+            }
+        }
 
         private void Image_MouseUp(object sender, MouseButtonEventArgs e)
         {
@@ -91,7 +112,7 @@ namespace MyApplication
             dialog.Filter = "Image files|*.bmp;*.jpg;*.png";
             if (dialog.ShowDialog() == true)
             {
-                image1.Source=new BitmapImage(new Uri(dialog.FileName));
+                image1.Source = new BitmapImage(new Uri(dialog.FileName));
             }
         }
     }
