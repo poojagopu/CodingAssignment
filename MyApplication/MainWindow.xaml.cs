@@ -13,6 +13,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Controls.Primitives;
 
 
 namespace MyApplication
@@ -28,7 +29,7 @@ namespace MyApplication
         {
             InitializeComponent();
         }
-        
+
         private void Image_MouseDown(object sender, MouseButtonEventArgs e)
         {
             //get position of mouse on window
@@ -40,8 +41,10 @@ namespace MyApplication
                 StrokeThickness = 2,
                 Opacity = 0.5,
                 Fill = Brushes.Red,
-                
+
             };
+
+            rect.Loaded += Rectangle_Loaded;
 
             // Add event handler for changing the rectangle color
             rect.MouseDown += Rect_MouseDown;
@@ -73,7 +76,7 @@ namespace MyApplication
             // checking if the rectangle is inside the image
             if (x < 0) x = 0;
             if (y < 0) y = 0;
-  
+
             if (x + width > image1.Width) width = image1.Width - x;
             if (y + height > image1.Height) height = image1.Height - y;
 
@@ -95,7 +98,7 @@ namespace MyApplication
                 // Set the Fill property of the rectangle to the selected color
                 Color color = Color.FromArgb(colorDialog.Color.A, colorDialog.Color.R, colorDialog.Color.G, colorDialog.Color.B);
                 rect.Fill = new SolidColorBrush(color);
-                
+
             }
         }
 
@@ -115,5 +118,81 @@ namespace MyApplication
                 image1.Source = new BitmapImage(new Uri(dialog.FileName));
             }
         }
+
+        private void Rectangle_Loaded(object sender, RoutedEventArgs e)
+        {
+            AdornerLayer.GetAdornerLayer(image1).Add(new ResizeAdorner(rect));
+
+
+        }
+    }
+
+    public class ResizeAdorner : Adorner
+    {
+        VisualCollection AdornerVisuals;
+        Thumb thumb1, thumb2;
+        Rectangle Rec;
+
+        public ResizeAdorner(UIElement adornedElement) : base(adornedElement)
+        {
+            AdornerVisuals = new VisualCollection(this);
+            thumb1 = new Thumb() { Background = Brushes.Coral, Height = 10, Width = 10 };
+            thumb2 = new Thumb() { Background = Brushes.Coral, Height = 10, Width = 10 };
+            Rec = new Rectangle() { Stroke = Brushes.Coral, StrokeThickness = 2, StrokeDashArray = { 3, 2 } };
+
+
+            thumb1.DragDelta += Thumb1_DragDelta;
+            thumb2.DragDelta += Thumb2_DragDelta;
+
+            AdornerVisuals.Add(Rec);
+            AdornerVisuals.Add(thumb1);
+            AdornerVisuals.Add(thumb2);
+
+
+        }
+
+        private void Thumb2_DragDelta(object sender, DragDeltaEventArgs e)
+        {
+            var ele = (FrameworkElement)AdornedElement;
+            ele.Height = ele.Height + e.VerticalChange < 0 ? 0 : ele.Height + e.VerticalChange;
+
+            ele.Width = ele.Width + e.HorizontalChange < 0 ? 0 : ele.Width + e.HorizontalChange;
+
+        }
+
+        private void Thumb1_DragDelta(object sender, DragDeltaEventArgs e)
+        {
+            var ele = (FrameworkElement)AdornedElement;
+            ele.Height = ele.Height - e.VerticalChange < 0 ? 0 : ele.Height - e.VerticalChange;
+
+            ele.Width = ele.Width - e.HorizontalChange < 0 ? 0 : ele.Width - e.HorizontalChange;
+        }
+
+
+
+
+        protected override Visual GetVisualChild(int index)
+        {
+            return AdornerVisuals[index];
+        }
+
+        protected override int VisualChildrenCount => AdornerVisuals.Count;
+
+
+
+        protected override Size ArrangeOverride(Size finalSize)
+        {
+
+            Rec.Arrange(new Rect(-2.5, -2.5, AdornedElement.DesiredSize.Width + 5, AdornedElement.DesiredSize.Height + 5));
+            thumb1.Arrange(new Rect(-5, -5, 10, 10));
+            thumb2.Arrange(new Rect(AdornedElement.DesiredSize.Width - 5, AdornedElement.DesiredSize.Height - 5, 10, 10));
+
+
+
+            return base.ArrangeOverride(finalSize);
+        }
+
+
+
     }
 }
