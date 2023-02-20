@@ -10,6 +10,7 @@
         <Canvas x:Name="canvas">
             <Button Content="Click to Upload" Click="Button_Click" Width="520" Height="400"/>
             <Image x:Name="image1" Width="500" Height="400" MouseDown="Image_MouseDown" MouseMove="Image_MouseMove" MouseUp="Image_MouseUp"/>
+            <Button Content="Save Image" Click="SaveImage_Click" Width="100" Height="30" HorizontalAlignment="Right" Margin="5" VerticalAlignment="Bottom"/>
         </Canvas>
     </Grid>
 </Window>
