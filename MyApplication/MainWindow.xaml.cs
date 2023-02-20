@@ -28,18 +28,23 @@ namespace MyApplication
         private Rectangle rect;
         private bool isDragging;
         private Point clickPosition;
+        Button myButton;
         public MainWindow()
         {
             InitializeComponent();
+            myButton = new Button();
         }
-        private void SaveImage_Click(object sender, RoutedEventArgs e)
+        private void Save_ImageButton(object sender, RoutedEventArgs e)
         {
+            canvas.Children.Remove(myButton);
             // Create a new RenderTargetBitmap of the same size as the image
-            Point imageTopLeft = new Point(Canvas.GetLeft(image1), Canvas.GetTop(image1));
-            Point imageSize = new Point(image1.ActualWidth, image1.Height);
-            RenderTargetBitmap bitmap = new RenderTargetBitmap((int)image1.ActualWidth, (int)image1.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-            //RenderTargetBitmap bitmap = new RenderTargetBitmap(imageTopLeft.X, imageTopLeft.Y, imageSize.X, imageSize.Y, PixelFormats.Pbgra32);
-
+            //Point imageTopLeft = new Point(Canvas.GetLeft(image1), Canvas.GetTop(image1));
+            //Point imageSize = new Point(image1.ActualWidth, image1.Height);
+            //Canvas.SetTop(canvas, Canvas.GetTop(image1));
+            //Canvas.SetLeft(canvas, Canvas.GetLeft(image1));
+            //canvas.RenderTransform = new TranslateTransform(0, -50);
+            RenderTargetBitmap bitmap = new RenderTargetBitmap((int)image1.ActualWidth, (int)image1.ActualHeight+50, 96, 96, PixelFormats.Pbgra32);
+            
             // Render the canvas to the bitmap
             bitmap.Render(canvas);
 
@@ -62,6 +67,7 @@ namespace MyApplication
                     encoder.Save(stream);
                 }
             }
+            canvas.Children.Add(myButton);
         }
 
         private void Image_MouseDown(object sender, MouseButtonEventArgs e)
@@ -235,7 +241,16 @@ namespace MyApplication
             if (dialog.ShowDialog() == true)
             {
                 image1.Source = new BitmapImage(new Uri(dialog.FileName));
+                image1.Stretch = Stretch.Fill;
             }
+
+            // Set the button's properties
+            myButton.Content = "Save Image";
+            myButton.Margin = new Thickness(10);
+            myButton.Click += Save_ImageButton; // assign an event handler for the Click event
+
+            // Add the button to a canvas
+            canvas.Children.Add(myButton);
         }
 
         private void Rectangle_Loaded(object sender, RoutedEventArgs e)
@@ -419,10 +434,5 @@ namespace MyApplication
             return base.ArrangeOverride(finalSize);
         }
 
-
-
     }
-
-
-
 }
