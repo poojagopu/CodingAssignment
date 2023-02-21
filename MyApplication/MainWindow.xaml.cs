@@ -1,20 +1,14 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.IO;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
+using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.Windows.Controls.Primitives;
 
 
 namespace MyApplication
@@ -25,7 +19,7 @@ namespace MyApplication
     public partial class MainWindow : Window
     {
         private Point startPoint;
-        private Rectangle rect;
+        private Rectangle rectangle;
         private bool isDragging;
         private Point clickPosition;
         Button myButton;
@@ -34,376 +28,599 @@ namespace MyApplication
             InitializeComponent();
             myButton = new Button();
         }
-        private void Save_ImageButton(object sender, RoutedEventArgs e)
-        {
-            canvas.Children.Remove(myButton);
-            // Create a new RenderTargetBitmap of the same size as the image
-            //Point imageTopLeft = new Point(Canvas.GetLeft(image1), Canvas.GetTop(image1));
-            //Point imageSize = new Point(image1.ActualWidth, image1.Height);
-            //Canvas.SetTop(canvas, Canvas.GetTop(image1));
-            //Canvas.SetLeft(canvas, Canvas.GetLeft(image1));
-            //canvas.RenderTransform = new TranslateTransform(0, -50);
-            RenderTargetBitmap bitmap = new RenderTargetBitmap((int)image1.ActualWidth, (int)image1.ActualHeight+50, 96, 96, PixelFormats.Pbgra32);
-            
-            // Render the canvas to the bitmap
-            bitmap.Render(canvas);
-
-            // Create a new PngBitmapEncoder
-            PngBitmapEncoder encoder = new PngBitmapEncoder();
-
-            // Add the bitmap to the encoder
-            encoder.Frames.Add(BitmapFrame.Create(bitmap));
-
-            // Create a new file dialog for saving the image
-            SaveFileDialog dialog = new SaveFileDialog();
-            dialog.Filter = "PNG Image (.png)|.png";
-            dialog.FileName = "image.png";
-
-            // Show the dialog and save the image if the user clicks OK
-            if (dialog.ShowDialog() == true)
-            {
-                using (Stream stream = dialog.OpenFile())
-                {
-                    encoder.Save(stream);
-                }
-            }
-            canvas.Children.Add(myButton);
-        }
 
         private void Image_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            //get position of mouse on window
-            startPoint = e.GetPosition(canvas);
-
-            rect = new Rectangle
+            try
             {
-                Stroke = Brushes.Red,
-                StrokeThickness = 2,
-                Opacity = 0.5,
-                Fill = Brushes.Red,
+                //get position of mouse on window
+                startPoint = e.GetPosition(canvas);
 
-            };
+                rectangle = new Rectangle
+                {
+                    Stroke = Brushes.Transparent,
+                    StrokeThickness = 2,
+                    Opacity = 0.5,
+                    Fill = Brushes.Red,
+                };
 
-            rect.Loaded += Rectangle_Loaded;
+                rectangle.Loaded += Rectangle_Loaded;
 
-            // Add event handler for changing the rectangle color
-            rect.MouseRightButtonDown += Rect_MouseRightDown;
-            rect.MouseLeftButtonDown += rectangle_MouseLeftButtonDown;
-            rect.MouseMove += rectangle_MouseMove;
-            rect.MouseLeftButtonUp += rectangle_MouseLeftButtonUp;
+                // Add event handler for Color changing and moving the rectangle
+                rectangle.MouseRightButtonDown += Rectangle_MouseRightDown;
+                rectangle.MouseLeftButtonDown += Rectangle_MouseLeftButtonDown;
+                rectangle.MouseMove += Rectangle_MouseMove;
+                rectangle.MouseLeftButtonUp += Rectangle_MouseLeftButtonUp;
 
+                Canvas.SetLeft(rectangle, startPoint.X);
+                Canvas.SetTop(rectangle, startPoint.Y);
 
-            // left property represents the distance between the left side of a control and its parent container Canvas
-            // top property represents the distance between the top of a control and its parent container Canvas
-
-            Canvas.SetLeft(rect, startPoint.X);
-            Canvas.SetTop(rect, startPoint.Y);
-
-            canvas.Children.Add(rect);
+                canvas.Children.Add(rectangle);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An exception occurred in Image_MouseDown: {ex.Message}");
+            }
         }
 
-        private void rectangle_MouseMove(object sender, MouseEventArgs e)
+        private void Image_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            Rectangle rect = (Rectangle)sender;
+            try
+            {
+                rectangle = null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An exception occurred in Image_MouseUp: {ex.Message}");
+            }
+        }
+
+        private void Image_MouseMove(object sender, MouseEventArgs e)
+        {
+            try
+            {
+                //when mouse is released
+                if (e.LeftButton == MouseButtonState.Released || rectangle == null)
+                    return;
+                // Get the current position of the mouse on the canvas
+                Point currentPosition = e.GetPosition(canvas);
+
+                double rectangleTopLeftX = Math.Min(currentPosition.X, startPoint.X);
+                double rectangleTopLeftY = Math.Min(currentPosition.Y, startPoint.Y);
+
+                double width = Math.Abs(currentPosition.X - startPoint.X);
+                double height = Math.Abs(currentPosition.Y - startPoint.Y);
+
+                // Checking if the rectangle is inside the image
+                if (rectangleTopLeftX < 0) rectangleTopLeftX = 0;
+                if (rectangleTopLeftY < 0) rectangleTopLeftY = 0;
+
+                if (rectangleTopLeftX + width > image.Width) width = image.Width - rectangleTopLeftX;
+                if (rectangleTopLeftY + height > image.Height) height = image.Height - rectangleTopLeftY;
+
+                rectangle.Width = width;
+                rectangle.Height = height;
+
+                Canvas.SetLeft(rectangle, rectangleTopLeftX);
+                Canvas.SetTop(rectangle, rectangleTopLeftY);
+            }
+            catch (NullReferenceException ex)
+            {
+                Console.WriteLine($"A NullReferenceException occurred in Image_MouseMove: {ex.Message}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"An InvalidOperationException occurred in Image_MouseMove: {ex.Message}");
+            }
+            catch (ArgumentException ex)
+            {
+                Console.WriteLine($"An ArgumentException occurred in Image_MouseMove: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An exception occurred in Image_MouseMove: {ex.Message}");
+            }
+
+        }
+
+        private void Rectangle_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (canvas == null || image == null)
+            {
+                throw new NullReferenceException("Canvas or image is null in Rectangle_MouseMove method.");
+            }
+
+            Rectangle rectangle = sender as Rectangle;
+            if (rectangle == null)
+            {
+                throw new ArgumentException("Sender is not a Rectangle object in Rectangle_MouseMove method.");
+            }
+
             if (isDragging)
             {
                 // Get the position of the mouse relative to the canvas.
                 Point currentPosition = e.GetPosition(canvas);
 
-                double x = Math.Min(currentPosition.X, clickPosition.X);
-                double y = Math.Min(currentPosition.Y, clickPosition.Y);
+                double rectangleTopLeftX = Math.Min(currentPosition.X, clickPosition.X);
+                double rectangleTopLeftY = Math.Min(currentPosition.Y, clickPosition.Y);
 
                 double width = Math.Abs(currentPosition.X - clickPosition.X);
                 double height = Math.Abs(currentPosition.Y - clickPosition.Y);
-
-                // checking if the rectangle is inside the image
-                if (x < 0 || y < 0 || (x + width > image1.Width) || (y + height > image1.Height))
-                {
-                    return;
-                }
 
                 // Calculate the offset from the position where the mouse was clicked.
                 double offsetX = currentPosition.X - clickPosition.X;
                 double offsetY = currentPosition.Y - clickPosition.Y;
 
                 // Update the position of the rectangle using the Canvas.Left and Canvas.Top attached properties.
-                Canvas.SetLeft(rect, Canvas.GetLeft(rect) + offsetX);
-                Canvas.SetTop(rect, Canvas.GetTop(rect) + offsetY);
+                Point rectangleNewPosition = new Point(Canvas.GetLeft(rectangle) + offsetX, Canvas.GetTop(rectangle) + offsetY);
+                if (rectangleNewPosition.X < 0) rectangleNewPosition.X = 0;
+                if (rectangleNewPosition.Y < 0) rectangleNewPosition.Y = 0;
+                if (rectangleNewPosition.X + rectangle.Width > image.Width) rectangleNewPosition.X = image.Width - rectangle.Width;
+                if (rectangleNewPosition.Y + rectangle.Height > image.Height) rectangleNewPosition.Y = image.Height - rectangle.Height;
+
+                if (double.IsNaN(rectangleNewPosition.X) || double.IsNaN(rectangleNewPosition.Y))
+                {
+                    throw new InvalidOperationException("Rectangle New Positon is NaN.");
+                }
+                Canvas.SetLeft(rectangle, rectangleNewPosition.X);
+                Canvas.SetTop(rectangle, rectangleNewPosition.Y);
 
                 // Remember the current position as the new click position.
                 clickPosition = currentPosition;
             }
         }
 
-        private void Image_MouseMove(object sender, MouseEventArgs e)
+        private void Rectangle_MouseRightDown(object sender, MouseButtonEventArgs e)
         {
-            //when mouse is released
-            if (e.LeftButton == MouseButtonState.Released || rect == null)
-                return;
-            //get curr position of mouse
-            Point pos = e.GetPosition(canvas);
-
-            double x = Math.Min(pos.X, startPoint.X);
-            double y = Math.Min(pos.Y, startPoint.Y);
-
-            double width = Math.Abs(pos.X - startPoint.X);
-            double height = Math.Abs(pos.Y - startPoint.Y);
-
-            // checking if the rectangle is inside the image
-            if (x < 0) x = 0;
-            if (y < 0) y = 0;
-
-            if (x + width > image1.Width) width = image1.Width - x;
-            if (y + height > image1.Height) height = image1.Height - y;
-
-            rect.Width = width;
-            rect.Height = height;
-
-            Canvas.SetLeft(rect, x);
-            Canvas.SetTop(rect, y);
-        }
-       
-
-        // learn the difference bwtween MouseButtonEventArgs and MouseEventArgs
-        private void Rect_MouseRightDown(object sender, MouseButtonEventArgs e)
-        {
-            Rectangle rect = (Rectangle)sender;
-
-            // Create a new context menu
-            ContextMenu menu = new ContextMenu();
-
-            // Create a new "Change Color" menu item
-            MenuItem changeColorItem = new MenuItem();
-            changeColorItem.Header = "Change Color";
-            changeColorItem.Click += (s, args) =>
+            try
             {
-                // Show a color dialog to select a new color
-                System.Windows.Forms.ColorDialog colorDialog = new System.Windows.Forms.ColorDialog();
-                if (colorDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                Rectangle rectangle = (Rectangle)sender;
+
+                // Create a new dropdown context menu
+                ContextMenu menu = new ContextMenu();
+
+                // Create a new "Change Color" menu item
+                MenuItem changeColorItem = new MenuItem();
+                changeColorItem.Header = "Change Color";
+                changeColorItem.Click += (s, args) =>
                 {
-                    // Set the Fill property of the rectangle to the selected color
-                    Color color = Color.FromArgb(colorDialog.Color.A, colorDialog.Color.R, colorDialog.Color.G, colorDialog.Color.B);
-                    rect.Fill = new SolidColorBrush(color);
-                }
-            };
-            menu.Items.Add(changeColorItem);
+                    try
+                    {
+                        // Show a color dialog to select a new color
+                        System.Windows.Forms.ColorDialog colorDialog = new System.Windows.Forms.ColorDialog();
+                        if (colorDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                        {
+                            // Set the Fill property of the rectangle to the selected color
+                            Color color = Color.FromArgb(colorDialog.Color.A, colorDialog.Color.R, colorDialog.Color.G, colorDialog.Color.B);
+                            rectangle.Fill = new SolidColorBrush(color);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Handle any exception that may occur while changing the color of the rectangle
+                        MessageBox.Show($"An error occurred while changing the color of the rectangle: {ex.Message}");
+                    }
+                };
+                menu.Items.Add(changeColorItem);
 
-            // Create a new "Remove Rectangle" menu item
-            MenuItem removeItem = new MenuItem();
-            removeItem.Header = "Remove Rectangle";
-            removeItem.Click += (s, args) =>
+                // Create a new "Remove Rectangle" menu item
+                MenuItem removeItem = new MenuItem();
+                removeItem.Header = "Remove Rectangle";
+                removeItem.Click += (s, args) =>
+                {
+                    try
+                    {
+                        // Remove the rectangle from the canvas
+                        canvas.Children.Remove(rectangle);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Handle any exception that may occur while removing the rectangle from the canvas
+                        MessageBox.Show($"An error occurred while removing the rectangle: {ex.Message}");
+                    }
+                };
+                menu.Items.Add(removeItem);
+
+                // Set the context menu of the rectangle to the new context menu
+                rectangle.ContextMenu = menu;
+            }
+            catch (Exception ex)
             {
-                // Remove the rectangle from the canvas
-                canvas.Children.Remove(rect);
-            };
-            menu.Items.Add(removeItem);
-
-            // Set the context menu of the rectangle to the new context menu
-            rect.ContextMenu = menu;
+                // Handle any exception that may occur while creating the context menu
+                MessageBox.Show($"An error occurred while creating the context menu: {ex.Message}");
+            }
         }
 
-        private void rectangle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private void Rectangle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            Rectangle rect = (Rectangle)sender;
+            if (!(sender is Rectangle))
+            {
+                // Handling the error condition appropriately
+                return;
+            }
+            Rectangle rectangle = (Rectangle)sender;
             // Set the isDragging flag to true and remember the position where the mouse was clicked.
             isDragging = true;
             clickPosition = e.GetPosition(canvas);
 
             // Change the cursor to a hand cursor to indicate that the rectangle can be dragged.
-            rect.Cursor = Cursors.Hand;
+            rectangle.Cursor = Cursors.Hand;
 
             // Capture the mouse so that mouse events are still handled even if the mouse leaves the rectangle.
-            rect.CaptureMouse();
+            rectangle.CaptureMouse();
         }
 
-        private void rectangle_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        private void Rectangle_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            Rectangle rect = (Rectangle)sender;
+            if (!(sender is Rectangle))
+            {
+                // Handling the error condition appropriately
+                return;
+            }
+            Rectangle rectangle = (Rectangle)sender;
             // Set the isDragging flag to false and restore the default cursor.
             isDragging = false;
-            rect.Cursor = Cursors.Arrow;
+            rectangle.Cursor = Cursors.Arrow;
 
             // Release the mouse capture.
-            rect.ReleaseMouseCapture();
+            rectangle.ReleaseMouseCapture();
         }
 
-        private void Image_MouseUp(object sender, MouseButtonEventArgs e)
+        private void Save_ImageButton(object sender, RoutedEventArgs e)
         {
-            rect = null;
-        }
+            try
+            {
+                canvas.Children.Remove(myButton);
 
+                RenderTargetBitmap bitmap = new RenderTargetBitmap((int)image.ActualWidth, (int)image.ActualHeight + 50, 96, 96, PixelFormats.Pbgra32);
+
+                // Render the canvas to the bitmap
+                bitmap.Render(canvas);
+
+                // Create a new PngBitmapEncoder
+                PngBitmapEncoder encoder = new PngBitmapEncoder();
+
+                // Add the bitmap to the encoder
+                encoder.Frames.Add(BitmapFrame.Create(bitmap));
+
+                // Create a new file dialog for saving the image
+                SaveFileDialog dialog = new SaveFileDialog();
+                dialog.Filter = "PNG Image (.png)|.png";
+                dialog.FileName = "image.png";
+
+                // Show the dialog and save the image if the user clicks on the button
+                if (dialog.ShowDialog() == true)
+                {
+                    using (Stream stream = dialog.OpenFile())
+                    {
+                        encoder.Save(stream);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("An error occurred while saving the image: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                canvas.Children.Add(myButton);
+            }
+        }
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            //to open one or more files
-            OpenFileDialog dialog = new OpenFileDialog();
-            dialog.Filter = "Image files|*.bmp;*.jpg;*.png";
-            if (dialog.ShowDialog() == true)
+            try
             {
-                image1.Source = new BitmapImage(new Uri(dialog.FileName));
-                image1.Stretch = Stretch.Fill;
+                // Open one or more files
+                OpenFileDialog dialog = new OpenFileDialog();
+                dialog.Filter = "Image files|*.bmp;*.jpg;*.png";
+                if (dialog.ShowDialog() == true)
+                {
+                    image.Source = new BitmapImage(new Uri(dialog.FileName));
+                    image.Stretch = Stretch.Fill;
+                }
+
+                // Set the button's properties
+                myButton.Content = "Save Image";
+                myButton.Margin = new Thickness(10);
+                myButton.Click += Save_ImageButton; // assign an event handler for the Click event
+
+                // Add the button to the canvas
+                canvas.Children.Add(myButton);
             }
-
-            // Set the button's properties
-            myButton.Content = "Save Image";
-            myButton.Margin = new Thickness(10);
-            myButton.Click += Save_ImageButton; // assign an event handler for the Click event
-
-            // Add the button to a canvas
-            canvas.Children.Add(myButton);
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                // Display an error message box and log the exception
+                MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Console.WriteLine("Error: " + ex.Message);
+            }
+            catch (System.ArgumentException ex)
+            {
+                // Display an error message box and log the exception
+                MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Console.WriteLine("Error: " + ex.Message);
+            }
+            catch (System.UriFormatException ex)
+            {
+                // Display an error message box and log the exception
+                MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Console.WriteLine("Error: " + ex.Message);
+            }
         }
+
 
         private void Rectangle_Loaded(object sender, RoutedEventArgs e)
         {
-            AdornerLayer.GetAdornerLayer(image1).Add(new ResizeAdorner(rect, image1));
-
-
+            AdornerLayer.GetAdornerLayer(image).Add(
+                new ResizeAdorner(rectangle, image, 
+                new Point(2, 2)));
         }
     }
 
     public class ResizeAdorner : Adorner
     {
         VisualCollection AdornerVisuals;
-        Thumb thumb1, thumb2, thumb3, thumb4;
-        Thumb te, be, le, re;
 
-        /* thumb1 - topleft
-         * thumb2 - bottomright
-         * thumb3 - bottomleft
-         * thumb4 - topright
-         */
+        // Declaring thumbs for corners of rectangle
+        Thumb topLeftThumb, bottomRightThumb, bottomLeftThumb, topRightThumb; 
 
-        Rectangle Rec;
+        // Declaring thumbs for sides of rectangle
+        Thumb topEdgeThumb, bottomEdgeThumb, leftEdgeThumb, rightEdgeThumb;
+
         Image image;
+        Point imageTopLeft;
 
-        public ResizeAdorner(UIElement adornedElement, Image image1) : base(adornedElement)
+        public ResizeAdorner(UIElement adornedElement, Image image1, Point topleft) : base(adornedElement)
         {
             AdornerVisuals = new VisualCollection(this);
             image = image1;
-            thumb1 = new Thumb() { Background = Brushes.Coral, Height = 10, Width = 10 };
-            thumb2 = new Thumb() { Background = Brushes.Coral, Height = 10, Width = 10 };
-            thumb3 = new Thumb() { Background = Brushes.Coral, Height = 10, Width = 10 };
-            thumb4 = new Thumb() { Background = Brushes.Coral, Height = 10, Width = 10 };
+            imageTopLeft = topleft;
 
-            te = new Thumb() { Background = Brushes.Coral, Height = 10, Width = 10 };
-            be = new Thumb() { Background = Brushes.Coral, Height = 10, Width = 10 };
-            le = new Thumb() { Background = Brushes.Coral, Height = 10, Width = 10 };
-            re = new Thumb() { Background = Brushes.Coral, Height = 10, Width = 10 };
+            // Initialising all thumbs 
+            topLeftThumb = new Thumb() { Background = Brushes.Coral, Opacity = 0.5, Height = 7, Width = 7 };
+            bottomRightThumb = new Thumb() { Background = Brushes.Coral, Opacity = 0.5, Height = 7, Width = 7 };
+            bottomLeftThumb = new Thumb() { Background = Brushes.Coral, Opacity = 0.5, Height = 7, Width = 7 };
+            topRightThumb = new Thumb() { Background = Brushes.Coral, Opacity = 0.5, Height = 7, Width = 7 };
 
+            topEdgeThumb = new Thumb() { Background = Brushes.Coral, Opacity = 0.5, Height = 7, Width = 7 };
+            bottomEdgeThumb = new Thumb() { Background = Brushes.Coral, Opacity = 0.5, Height = 7, Width = 7 };
+            leftEdgeThumb = new Thumb() { Background = Brushes.Coral, Opacity = 0.5, Height = 7, Width = 7 };
+            rightEdgeThumb = new Thumb() { Background = Brushes.Coral, Opacity = 0.5, Height = 7, Width = 7 };
 
-            Rec = new Rectangle() { Stroke = Brushes.Coral, StrokeThickness = 2, StrokeDashArray = { 3, 2 } };
+            // Creating EventHandlers for all thumbs
+            topLeftThumb.DragDelta += TopLeft_ThumbDragDelta;
+            bottomRightThumb.DragDelta += BottomRight_ThumbDragDelta;
+            bottomLeftThumb.DragDelta += BottomLeft_ThumbDragDelta;
+            topRightThumb.DragDelta += TopRight_ThumbDragDelta;
 
+            topEdgeThumb.DragDelta += TopEdge_ThumbDragDelta;
+            bottomEdgeThumb.DragDelta += BottomEdge_ThumbDragDelta;
+            leftEdgeThumb.DragDelta += LeftEdge_ThumbDragDelta;
+            rightEdgeThumb.DragDelta += RightEdge_ThumbDragDelta;
 
-            thumb1.DragDelta += Thumb1_DragDelta;
-            thumb2.DragDelta += Thumb2_DragDelta;
-            thumb3.DragDelta += Thumb3_DragDelta;
-            thumb4.DragDelta += Thumb4_DragDelta;
+            AdornerVisuals.Add(topLeftThumb);
+            AdornerVisuals.Add(bottomRightThumb);
+            AdornerVisuals.Add(bottomLeftThumb);
+            AdornerVisuals.Add(topRightThumb);
 
-            te.DragDelta += Te_DragDelta;
-            be.DragDelta += Be_DragDelta;
-            le.DragDelta += Le_DragDelta;
-            re.DragDelta += Re_DragDelta;
-
-            AdornerVisuals.Add(Rec);
-            AdornerVisuals.Add(thumb1);
-            AdornerVisuals.Add(thumb2);
-            AdornerVisuals.Add(thumb3);
-            AdornerVisuals.Add(thumb4);
-
-            AdornerVisuals.Add(te);
-            AdornerVisuals.Add(be);
-            AdornerVisuals.Add(le);
-            AdornerVisuals.Add(re);
-
-
+            AdornerVisuals.Add(topEdgeThumb);
+            AdornerVisuals.Add(bottomEdgeThumb);
+            AdornerVisuals.Add(leftEdgeThumb);
+            AdornerVisuals.Add(rightEdgeThumb);
 
         }
 
-        private void Re_DragDelta(object sender, DragDeltaEventArgs e)
+        
+        private bool Is_OutOfBounds(Point rectangleTopLeft, Point newDimensions)
         {
-            var ele = (FrameworkElement)AdornedElement;
-            ele.Width = ele.Width + e.HorizontalChange < 0 ? 0 : ele.Width + e.HorizontalChange;
+            // Checking if the rectangle is going out of the image boundaries
+            if (rectangleTopLeft.X < imageTopLeft.X || rectangleTopLeft.Y < imageTopLeft.Y ||
+                rectangleTopLeft.Y + newDimensions.Y > imageTopLeft.Y + image.ActualHeight ||
+                rectangleTopLeft.X + newDimensions.X > imageTopLeft.X + image.ActualWidth)
+            {
+                return true;
+            }
+            return false;
         }
 
-        private void Le_DragDelta(object sender, DragDeltaEventArgs e)
+        private void RightEdge_ThumbDragDelta(object sender, DragDeltaEventArgs e)
         {
-            var ele = (FrameworkElement)AdornedElement;
-            double deltaHorizontal = Math.Min(e.HorizontalChange, ele.Width - ele.MinWidth);
-            ele.Width -= deltaHorizontal;
+            try
+            {
+                var rectangle = (FrameworkElement)AdornedElement;
 
-            Canvas.SetLeft(ele, Canvas.GetLeft(ele) + deltaHorizontal);
-        }
+                // Adjusting height and width of rectangle
+                double newWidth = rectangle.Width + e.HorizontalChange < 0 ? 0 : rectangle.Width + e.HorizontalChange;
 
-        private void Te_DragDelta(object sender, DragDeltaEventArgs e)
-        {
-            var ele = (FrameworkElement)AdornedElement;
-            double deltaVertical = Math.Min(e.VerticalChange, ele.Height - ele.MinHeight);
-            ele.Height -= deltaVertical;
-
-            Canvas.SetTop(ele, Canvas.GetTop(ele) + deltaVertical);
-        }
-
-        private void Be_DragDelta(object sender, DragDeltaEventArgs e)
-        {
-            var ele = (FrameworkElement)AdornedElement;
-            ele.Height = ele.Height + e.VerticalChange < 0 ? 0 : ele.Height + e.VerticalChange;
-
-        }
-
-        private void Thumb2_DragDelta(object sender, DragDeltaEventArgs e)// bottom right
-        {
-            var ele = (FrameworkElement)AdornedElement;
-            ele.Height = ele.Height + e.VerticalChange < 0 ? 0 : ele.Height + e.VerticalChange;
-            ele.Width = ele.Width + e.HorizontalChange < 0 ? 0 : ele.Width + e.HorizontalChange;
-
-        }
-
-        private void Thumb1_DragDelta(object sender, DragDeltaEventArgs e) //top left
-        {
-            var ele = (FrameworkElement)AdornedElement;
-
-            // Adjust width and left
-           double deltaHorizontal = Math.Min(e.HorizontalChange, ele.Width - ele.MinWidth);
-            ele.Width -= deltaHorizontal;
-
-            Canvas.SetLeft(ele, Canvas.GetLeft(ele) + deltaHorizontal);
-
-            // Adjust height and top
-            double deltaVertical = Math.Min(e.VerticalChange, ele.Height - ele.MinHeight);
-            ele.Height -= deltaVertical;
-
-            Canvas.SetTop(ele, Canvas.GetTop(ele) + deltaVertical);
+                // Checking if the rectangle goes out of the image boundaries
+                if (!Is_OutOfBounds(new Point(Canvas.GetLeft(rectangle), Canvas.GetTop(rectangle)),
+                                    new Point(newWidth, rectangle.Height)))
+                {
+                    rectangle.Width = newWidth;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("An exception occurred: " + ex.Message);
+            }
         }
 
 
-        private void Thumb3_DragDelta(object sender, DragDeltaEventArgs e) //bottom left
+        private void LeftEdge_ThumbDragDelta(object sender, DragDeltaEventArgs e)
         {
-            var ele = (FrameworkElement)AdornedElement;
+            try
+            {
+                var rectangle = (FrameworkElement)AdornedElement;
 
-            // Adjust width and left
-            double deltaHorizontal = Math.Min(e.HorizontalChange, ele.Width - ele.MinWidth);
-            ele.Width -= deltaHorizontal;
+                // Adjusting height and width of rectangle
+                double deltaHorizontal = Math.Min(e.HorizontalChange, rectangle.Width - rectangle.MinWidth);
+                double newWidth = rectangle.Width - deltaHorizontal;
 
-            Canvas.SetLeft(ele, Canvas.GetLeft(ele) + deltaHorizontal);
-
-            // Adjust height and top
-            ele.Height = ele.Height + e.VerticalChange < 0 ? 0 : ele.Height + e.VerticalChange;
-
+                // Checking if the rectangle goes out of the image boundaries
+                if (!Is_OutOfBounds(new Point(Canvas.GetLeft(rectangle), Canvas.GetTop(rectangle)),
+                                    new Point(newWidth, rectangle.Height)))
+                {
+                    rectangle.Width -= deltaHorizontal;
+                    Canvas.SetLeft(rectangle, Canvas.GetLeft(rectangle) + deltaHorizontal);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error occurred: {ex.Message}");
+            }
         }
 
-        private void Thumb4_DragDelta(object sender, DragDeltaEventArgs e) //bottom left
+
+        private void TopEdge_ThumbDragDelta(object sender, DragDeltaEventArgs e)
         {
-            var ele = (FrameworkElement)AdornedElement;
+            try
+            {
+                var rectangle = (FrameworkElement)AdornedElement;
 
-            // Adjust width and left
-            ele.Width = ele.Width + e.HorizontalChange < 0 ? 0 : ele.Width + e.HorizontalChange;
+                // Adjusting height and width of rectangle
+                double deltaVertical = Math.Min(e.VerticalChange, rectangle.Height - rectangle.MinHeight);
+                double newHeight = rectangle.Height - deltaVertical;
 
-            // Adjust height and top
-            double deltaVertical = Math.Min(e.VerticalChange, ele.Height - ele.MinHeight);
-            ele.Height -= deltaVertical;
+                // Checking if the rectangle goes out of the image boundaries
+                if (!Is_OutOfBounds(new Point(Canvas.GetLeft(rectangle), Canvas.GetTop(rectangle)),
+                                    new Point(rectangle.Width, newHeight)))
+                {
+                    rectangle.Height -= deltaVertical;
+                    Canvas.SetTop(rectangle, Canvas.GetTop(rectangle) + deltaVertical);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("An error occurred in TopEdge_ThumbDragDelta: " + ex.Message);
+            }
+        }
 
-            Canvas.SetTop(ele, Canvas.GetTop(ele) + deltaVertical);
 
+        private void BottomEdge_ThumbDragDelta(object sender, DragDeltaEventArgs e)
+        {
+            try
+            {
+                var rectangle = (FrameworkElement)AdornedElement;
+
+                // Adjusting height and width of rectangle
+                double newHeight = rectangle.Height + e.VerticalChange < 0 ? 0 : rectangle.Height + e.VerticalChange;
+
+                // Checking if the rectangle goes out of the image boundaries
+                if (!Is_OutOfBounds(new Point(Canvas.GetLeft(rectangle), Canvas.GetTop(rectangle)),
+                                    new Point(rectangle.Width, newHeight)))
+                {
+                    rectangle.Height = newHeight;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error in BottomEdge_ThumbDragDelta: " + ex.Message);
+            }
+        }
+
+        private void BottomRight_ThumbDragDelta(object sender, DragDeltaEventArgs e)
+        {
+            try
+            {
+                var rectangle = (FrameworkElement)AdornedElement;
+
+                // Adjusting height and width of rectangle
+                double newHeight = rectangle.Height + e.VerticalChange < 0 ? 0 : rectangle.Height + e.VerticalChange;
+                double newWidth = rectangle.Width + e.HorizontalChange < 0 ? 0 : rectangle.Width + e.HorizontalChange;
+
+                // Checking if the rectangle goes out of the image boundaries
+                if (!Is_OutOfBounds(new Point(Canvas.GetLeft(rectangle), Canvas.GetTop(rectangle)),
+                                    new Point(newWidth, newHeight)))
+                {
+                    rectangle.Height = newHeight;
+                    rectangle.Width = newWidth;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred in BottomRight_ThumbDragDelta: {ex.Message}");
+            }
+        }
+
+        private void TopLeft_ThumbDragDelta(object sender, DragDeltaEventArgs e)
+        {
+            try
+            {
+                var rectangle = (FrameworkElement)AdornedElement;
+
+                // Adjusting height and width of rectangle
+                double deltaHorizontal = Math.Min(e.HorizontalChange, rectangle.Width - rectangle.MinWidth);
+                double deltaVertical = Math.Min(e.VerticalChange, rectangle.Height - rectangle.MinHeight);
+                double newWidth = rectangle.Width - deltaHorizontal;
+                double newHeight = rectangle.Height - deltaVertical;
+
+                // Checking if the rectangle goes out of the image boundaries
+                if (!Is_OutOfBounds(new Point(Canvas.GetLeft(rectangle), Canvas.GetTop(rectangle)),
+                                    new Point(rectangle.Width, newHeight)))
+                {
+                    rectangle.Height = newHeight;
+                    rectangle.Width = newWidth;
+                    Canvas.SetLeft(rectangle, Canvas.GetLeft(rectangle) + deltaHorizontal);
+                    Canvas.SetTop(rectangle, Canvas.GetTop(rectangle) + deltaVertical);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An exception occurred in the TopLeft_ThumbDragDelta method: {ex.Message}");
+            }
+        }
+
+        private void BottomLeft_ThumbDragDelta(object sender, DragDeltaEventArgs e) //bottom left
+        {
+            try
+            {
+                var rectangle = (FrameworkElement)AdornedElement;
+
+                // Adjusting height and width of rectangle
+                double deltaHorizontal = Math.Min(e.HorizontalChange, rectangle.Width - rectangle.MinWidth);
+                double newWidth = rectangle.Width - deltaHorizontal;
+                double newHeight = rectangle.Height + e.VerticalChange < 0 ? 0 : rectangle.Height + e.VerticalChange;
+
+                // Checking if the rectangle goes out of the image boundaries
+                if (!Is_OutOfBounds(new Point(Canvas.GetLeft(rectangle), Canvas.GetTop(rectangle)),
+                                    new Point(newWidth, newHeight)))
+                {
+                    rectangle.Width = newWidth;
+                    rectangle.Height = newHeight;
+                    Canvas.SetLeft(rectangle, Canvas.GetLeft(rectangle) + deltaHorizontal);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("An error occurred: " + ex.Message);
+            }
+        }
+
+
+        private void TopRight_ThumbDragDelta(object sender, DragDeltaEventArgs e) //bottom left
+        {
+            try
+            {
+                var rectangle = (FrameworkElement)AdornedElement;
+
+                // Adjusting height and width of rectangle
+                double deltaVertical = Math.Min(e.VerticalChange, rectangle.Height - rectangle.MinHeight);
+                double newWidth = rectangle.Width + e.HorizontalChange < 0 ? 0 : rectangle.Width + e.HorizontalChange;
+                double newHeight = rectangle.Height - deltaVertical;
+
+                // Checking if the rectangle goes out of the image boundaries
+                if (!Is_OutOfBounds(new Point(Canvas.GetLeft(rectangle), Canvas.GetTop(rectangle)),
+                                    new Point(newWidth, newHeight)))
+                {
+                    rectangle.Width = newWidth;
+                    rectangle.Height = newHeight;
+                    Canvas.SetTop(rectangle, Canvas.GetTop(rectangle) + deltaVertical);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("An error occurred: " + ex.Message);
+            }
         }
 
 
@@ -413,26 +630,21 @@ namespace MyApplication
         }
 
         protected override int VisualChildrenCount => AdornerVisuals.Count;
-
-
-
+       
         protected override Size ArrangeOverride(Size finalSize)
         {
 
-            Rec.Arrange(new Rect(-2.5, -2.5, AdornedElement.DesiredSize.Width + 5, AdornedElement.DesiredSize.Height + 5));
-            thumb1.Arrange(new Rect(-5, -5, 10, 10));// top left
-            thumb2.Arrange(new Rect(AdornedElement.DesiredSize.Width - 5, AdornedElement.DesiredSize.Height - 5, 10, 10)); //bottom right
-            thumb3.Arrange(new Rect(- 5, AdornedElement.DesiredSize.Height - 5, 10, 10)); //bottom right
-            thumb4.Arrange(new Rect(AdornedElement.DesiredSize.Width - 5, - 5, 10, 10)); //bottom right
+            topLeftThumb.Arrange(new Rect(-5, -5, 10, 10));
+            bottomRightThumb.Arrange(new Rect(AdornedElement.DesiredSize.Width - 5, AdornedElement.DesiredSize.Height - 5, 10, 10)); 
+            bottomLeftThumb.Arrange(new Rect(- 5, AdornedElement.DesiredSize.Height - 5, 10, 10)); 
+            topRightThumb.Arrange(new Rect(AdornedElement.DesiredSize.Width - 5, - 5, 10, 10)); 
 
-            te.Arrange(new Rect((AdornedElement.DesiredSize.Width / 2) - 5, -5, 10, 10));
-            be.Arrange(new Rect((AdornedElement.DesiredSize.Width / 2) - 5, AdornedElement.DesiredSize.Height - 5, 10, 10));
-            re.Arrange(new Rect(AdornedElement.DesiredSize.Width-5, (AdornedElement.DesiredSize.Height / 2) - 5, 10, 10));
-            le.Arrange(new Rect(-5, (AdornedElement.DesiredSize.Height / 2) - 5, 10, 10));
-
+            topEdgeThumb.Arrange(new Rect((AdornedElement.DesiredSize.Width / 2) - 5, -5, 10, 10));
+            bottomEdgeThumb.Arrange(new Rect((AdornedElement.DesiredSize.Width / 2) - 5, AdornedElement.DesiredSize.Height - 5, 10, 10));
+            rightEdgeThumb.Arrange(new Rect(AdornedElement.DesiredSize.Width-5, (AdornedElement.DesiredSize.Height / 2) - 5, 10, 10));
+            leftEdgeThumb.Arrange(new Rect(-5, (AdornedElement.DesiredSize.Height / 2) - 5, 10, 10));
 
             return base.ArrangeOverride(finalSize);
         }
-
     }
 }

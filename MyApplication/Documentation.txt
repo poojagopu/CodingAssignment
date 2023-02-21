@@ -1,0 +1,73 @@
+﻿## Coding Assignment
+
+This project is a WPF application that allows the user to select and load an image, draw one or more rectangles on the image, resize and move the rectangle(s), change their color, and save the changes to a new image.
+
+## Features
+
+- Load an Image
+    
+    Click the Load Image button to select and load an image. The image will be displayed on the canvas.
+- Draw Rectangle(s) on the Image
+
+    Click and drag the mouse on the canvas to draw a rectangle.
+    The size of the rectangle depends on how much the user drags the mouse. Only allow drawing inside the image.
+- Change the Rectangle Color
+
+    Click any rectangle to select it.
+    Right-click the rectangle and select 'color change' from dropdown and then select a color from the color palette to change the rectangle's color.
+- Resize the Rectangle(s)
+
+    Hover over any corner or side of the rectangle until the mouse cursor changes to a resize icon.
+    Click and drag the mouse to resize the rectangle.
+- Move the Rectangle(s)
+   
+    Click and hold a rectangle to select it.
+    Move the mouse to move the selected rectangle.
+    Release the mouse to drop the rectangle at the new location.
+- Delete any Rectangle
+    
+    Click a rectangle to select it.
+    Right-click the rectangle and select 'delete rectangle' from dropdown and then press the Delete option to delete the selected rectangle.
+- Save the Changes to a New Image
+    
+    Click the Save Image button to save the changes made on the canvas to a new image file.
+    The new image will be saved to our local.
+
+## How to Use
+
+- Launch the application by double-clicking the WPFImageEditor.exe file.
+- Click the Load Image button to load an image.
+- Draw one or more rectangles on the image by clicking and dragging the mouse on the canvas.
+- Change the color of a rectangle by selecting from dropdown on right-clicking to access the color palette.
+- Resize the rectangle(s) by clicking and dragging on any corner or side of the rectangle.
+- Move the rectangle(s) by clicking and dragging on a selected rectangle.
+- Delete any rectangle from dropdown on right-clicking it and pressing the Delete option.
+- Click the Save Image button to save the changes to a new image file.
+
+## Installation
+
+The application is implemented using C# in Visual Studio 2019 with .NET Framework 4.8 and WPF.
+
+    
+## Implementation Details
+The following are the implementation details of the different features:
+- Load an Image
+- Use the OpenFileDialog class to allow the user to select an image file.
+- Use the BitmapImage class to load the image into a System.Windows.Controls.Image control.
+- Use the MouseDown and MouseUp events of the System.Windows.Controls.Image control to handle the drawing of the rectangle.
+- Use the Rectangle class to draw a rectangle with a transparent border and a red fill with less opacity.
+- Use the Canvas.SetLeft and Canvas.SetTop attached properties to set the position of the rectangle on the canvas.
+- Use the MouseRightButtonDown event of the rectangle to handle the color change from the dropdown created.
+- Use the ColorDialog class to allow the user to select a new color for the rectangle. 
+- Use the Adorner class to handle the resizing of the rectangle.
+- Use the RectangleMouseLeftButtonDown , RectangleMouseMove and RectangleMouseLeftButtonUp events of the rectangle to handle the moving of the rectangle.
+- Use the Canvas.SetLeft and Canvas.SetTop attached properties to change the position of the rectangle on the canvas.
+- Use the MouseRightButtonDown event of the rectangle to handle the selection of the rectangle to be deleted from the dropdown.
+- Use the SaveFileDialog class to allow the user to select a filename and location for the new image file.
+- Use the RenderTargetBitmap class to create a new image from the contents of the canvas. Save the new image to your local.
+
+
+## Screenshots
+
+![App Screenshot](https://via.placeholder.com/468x300?text=App+Screenshot+Here)
+
