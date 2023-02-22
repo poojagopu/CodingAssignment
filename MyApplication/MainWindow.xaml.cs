@@ -214,14 +214,12 @@ namespace MyApplication
                                     Fill = new SolidColorBrush(item.FillColor.ToColor()),
                                     Opacity = item.Opacity,
                                 };
-                                
-                                /*
-                                rect.Loaded += Rectangle_Loaded;
+                                // rect.Loaded += Rectangle_Loaded;
                                 rect.MouseRightButtonDown += Rectangle_MouseRightDown;
                                 rect.MouseLeftButtonDown += Rectangle_MouseLeftButtonDown;
                                 rect.MouseMove += Rectangle_MouseMove;
                                 rect.MouseLeftButtonUp += Rectangle_MouseLeftButtonUp;
-                                */
+                                
                                 Canvas.SetLeft(rect, item.Left);
                                 Canvas.SetTop(rect, item.Top);
                                 canvas.Children.Add(rect);
@@ -240,7 +238,29 @@ namespace MyApplication
                                     Height = item.Height
 
                                 };
-                                
+                                if(button.Content.ToString()=="Save Image")
+                                {
+                                    canvas.Children.Remove(myButton);
+                                    canvas.Children.Remove(saveSession);
+                                    canvas.Children.Remove(loadSession);
+
+                                    button.Click += Save_ImageButton;
+
+                                    canvas.Children.Add(myButton);
+                                    canvas.Children.Add(saveSession);
+                                    canvas.Children.Add(loadSession);
+                                }
+                                if (button.Content.ToString() == "Save Session")
+                                {
+                                    button.Click += SaveSession_Click;
+                                }
+                                if (button.Content.ToString() == "Load Session")
+                                {
+                                    button.Click += LoadSession_Click;
+                                }
+
+
+
                                 Canvas.SetLeft(button, item.Left);
                                 Canvas.SetTop(button, item.Top);
                                 canvas.Children.Add(button);
@@ -255,6 +275,10 @@ namespace MyApplication
                                     Source = new BitmapImage(new Uri(item.ImageUri)),
                                     Stretch = Stretch.Fill
                                 };
+
+                                image.MouseDown += Image_MouseDown;
+                                image.MouseMove += Image_MouseMove;
+                                image.MouseUp += Image_MouseUp;
                                 Canvas.SetLeft(image, item.Left);
                                 Canvas.SetTop(image, item.Top);
                                 canvas.Children.Add(image);
@@ -510,6 +534,8 @@ namespace MyApplication
             try
             {
                 canvas.Children.Remove(myButton);
+                canvas.Children.Remove(saveSession);
+                canvas.Children.Remove(loadSession);
 
                 RenderTargetBitmap bitmap = new RenderTargetBitmap((int)image.ActualWidth, (int)image.ActualHeight + 50, 96, 96, PixelFormats.Pbgra32);
 
@@ -543,6 +569,9 @@ namespace MyApplication
             finally
             {
                 canvas.Children.Add(myButton);
+                canvas.Children.Add(saveSession);
+                canvas.Children.Add(loadSession);
+                
             }
         }
 
@@ -587,13 +616,21 @@ namespace MyApplication
 
         private void Rectangle_Loaded(object sender, RoutedEventArgs e)
         {
-            AdornerLayer.GetAdornerLayer(image).Add(
-                new ResizeAdorner(rectangle, image, 
-                new Point(2, 2)));
+            ResizeAdorner resizeAdorner = new ResizeAdorner(rectangle, image, new Point(2, 2));
+
+            AdornerLayer adornerLayer = AdornerLayer.GetAdornerLayer(image);
+            if (adornerLayer != null)
+            {
+                adornerLayer.Add(resizeAdorner);
+            }
+            else
+            {
+                Console.WriteLine("AdornerLayer is null.");
+            }
         }
+
     }
 
-    [Serializable]
     public class ResizeAdorner : Adorner
     {
         VisualCollection AdornerVisuals;
@@ -610,6 +647,7 @@ namespace MyApplication
         public ResizeAdorner(UIElement adornedElement, Image image1, Point topleft) : base(adornedElement)
         {
             AdornerVisuals = new VisualCollection(this);
+            Console.WriteLine("here in constructor");
             image = image1;
             imageTopLeft = topleft;
 
