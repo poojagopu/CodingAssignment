@@ -17,9 +17,7 @@ using System.Linq;
 
 namespace MyApplication
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
+
     [Serializable]
     public class CanvasItem
     {
@@ -28,7 +26,6 @@ namespace MyApplication
         public double Top { get; set; }
         public double Width { get; set; }
         public double Height { get; set; }
-
         public SerializableThickness Margin { get; set; }
         public ColorData FillColor { get; set; }
         public double Opacity { get; set; }
@@ -43,9 +40,6 @@ namespace MyApplication
     {
         public List<CanvasItem> Items { get; set; }
     }
-
-    
-
 
     [Serializable]
     public class ColorData
@@ -120,178 +114,55 @@ namespace MyApplication
         private Rectangle rectangle;
         private bool isDragging;
         private Point clickPosition;
-        Button myButton;
-        Button saveSession;
-        Button loadSession;
+        Button saveImageButton;
+        Button saveSessionButton;
+        Button loadSessionButton;
         private Uri imageURI;
         public MainWindow()
         {
             InitializeComponent();
-            myButton = new Button();
-            saveSession = new Button();
-            loadSession = new Button();
+            saveImageButton = new Button();
+            saveSessionButton = new Button();
+            loadSessionButton = new Button();
         }
 
-        private void SaveSession_Click(object sender, RoutedEventArgs e)
+        private void Button_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                var saveFileDialog = new SaveFileDialog();
-                saveFileDialog.Filter = "Binary files (.bin)|*.bin|All files (*.*)|*.*";
-                saveFileDialog.Title = "Save session data";
-                if (saveFileDialog.ShowDialog() == true)
+                // Open image file
+                OpenFileDialog dialog = new OpenFileDialog();
+                dialog.Filter = "Image files|.bmp;.jpg;*.png";
+                if (dialog.ShowDialog() == true)
                 {
-                    var filePath = saveFileDialog.FileName;
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        var sessionData = new SessionData { Items = new List<CanvasItem>() };
-
-                        // Store the data for each canvas item in the session data.
-                        foreach (var item in canvas.Children.OfType<FrameworkElement>())
-                        {
-                            var type = item.GetType().Name;
-                            if (type == "Rectangle" || type == "Button" || type == "Image")
-                            {
-                                var canvasItem = new CanvasItem
-                                {
-                                    Type = type,
-                                    Left = Canvas.GetLeft(item),
-                                    Top = Canvas.GetTop(item),
-                                    Width = item.Width,
-                                    Height = item.Height,
-                                    FillColor = new ColorData((item as Shape)?.Fill is SolidColorBrush solidColorBrush ? solidColorBrush.Color : Colors.Transparent),
-                                    Opacity = item.Opacity,
-                                    Content = (item as Button)?.Content as string,
-                                    ImageUri = (item as Image)?.Source?.ToString(),
-                                    HorizontalAlignment = (item as Button)?.HorizontalAlignment,
-                                    VerticalAlignment = (item as Button)?.VerticalAlignment,
-                                    Margin = (item as Button)?.Margin != null ? new SerializableThickness((item as Button).Margin) : new SerializableThickness()
-                                };
-                                sessionData.Items.Add(canvasItem);
-                            }
-                        }
-                        // Serialize the session data and write it to the file stream.
-                        var formatter = new BinaryFormatter();
-                        formatter.Serialize(stream, sessionData);
-                    }
+                    imageURI = new Uri(dialog.FileName);
+                    image.Source = new BitmapImage(imageURI);
+                    image.Stretch = Stretch.Fill;
                 }
+
+                // Set the button's properties
+                saveImageButton.Content = "Save Image";
+                saveImageButton.Margin = new Thickness(10, 10, 40, 40);
+                saveImageButton.Click += Save_ImageButton;
+
+                saveSessionButton.Content = "Save Session";
+                saveSessionButton.Margin = new Thickness(330, 10, 40, 40);
+                saveSessionButton.Click += SaveSession_Click;
+
+                loadSessionButton.Content = "Load Session";
+                loadSessionButton.Margin = new Thickness(420, 10, 40, 40);
+                loadSessionButton.Click += LoadSession_Click;
+
+                // Add the button to the canvas
+                canvas.Children.Add(saveImageButton);
+                canvas.Children.Add(saveSessionButton);
+                canvas.Children.Add(loadSessionButton);
             }
+
             catch (Exception ex)
             {
-                Console.WriteLine($"An exception occurred in SaveSession_Click: {ex.Message}");
-                Console.WriteLine(ex.StackTrace);
+                MessageBox.Show("An error occurred: " + ex.Message);
             }
-        }
-
-        private void LoadSession_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var openFileDialog = new OpenFileDialog();
-                openFileDialog.Filter = "Binary files (.bin)|*.bin|All files (*.*)|*.*";
-                openFileDialog.Title = "Load session data";
-                if (openFileDialog.ShowDialog() == true)
-                {
-                    var filePath = openFileDialog.FileName;
-                    using (var stream = new FileStream(filePath, FileMode.Open))
-                    {
-                        var formatter = new BinaryFormatter();
-                        stream.Position = 0;
-                        var sessionData = formatter.Deserialize(stream) as SessionData;
-
-                        // Remove existing canvas items
-                        canvas.Children.Clear();
-
-                        // Add the canvas items stored in the session data
-                        foreach (var item in sessionData.Items)
-                        {
-                            if (item.Type == "Rectangle")
-                            {
-                                var rect = new Rectangle
-                                {
-                                    Width = item.Width,
-                                    Height = item.Height,
-                                    Fill = new SolidColorBrush(item.FillColor.ToColor()),
-                                    Opacity = item.Opacity,
-                                };
-                                // rect.Loaded += Rectangle_Loaded;
-                                rect.MouseRightButtonDown += Rectangle_MouseRightDown;
-                                rect.MouseLeftButtonDown += Rectangle_MouseLeftButtonDown;
-                                rect.MouseMove += Rectangle_MouseMove;
-                                rect.MouseLeftButtonUp += Rectangle_MouseLeftButtonUp;
-                                
-                                Canvas.SetLeft(rect, item.Left);
-                                Canvas.SetTop(rect, item.Top);
-                                canvas.Children.Add(rect);
-
-                            }
-                            else if (item.Type == "Button")
-                            {
-                                var button = new Button
-                                {
-                                    Margin = item.Margin.ToThickness(),
-                                    Content = item.Content,
-                                    HorizontalAlignment = item.HorizontalAlignment ?? HorizontalAlignment.Left,
-                                    VerticalAlignment = item.VerticalAlignment ?? VerticalAlignment.Top,
-                                    Opacity = item.Opacity,
-                                    Width = item.Width,
-                                    Height = item.Height
-
-                                };
-                                if(button.Content.ToString()=="Save Image")
-                                {
-                                    canvas.Children.Remove(myButton);
-                                    canvas.Children.Remove(saveSession);
-                                    canvas.Children.Remove(loadSession);
-
-                                    button.Click += Save_ImageButton;
-
-                                    canvas.Children.Add(myButton);
-                                    canvas.Children.Add(saveSession);
-                                    canvas.Children.Add(loadSession);
-                                }
-                                if (button.Content.ToString() == "Save Session")
-                                {
-                                    button.Click += SaveSession_Click;
-                                }
-                                if (button.Content.ToString() == "Load Session")
-                                {
-                                    button.Click += LoadSession_Click;
-                                }
-
-
-
-                                Canvas.SetLeft(button, item.Left);
-                                Canvas.SetTop(button, item.Top);
-                                canvas.Children.Add(button);
-                            }
-                            else if (item.Type == "Image")
-                            {
-                                var image = new Image
-                                {
-                                    Width = item.Width,
-                                    Height = item.Height,
-                                    Opacity = item.Opacity,
-                                    Source = new BitmapImage(new Uri(item.ImageUri)),
-                                    Stretch = Stretch.Fill
-                                };
-
-                                image.MouseDown += Image_MouseDown;
-                                image.MouseMove += Image_MouseMove;
-                                image.MouseUp += Image_MouseUp;
-                                Canvas.SetLeft(image, item.Left);
-                                Canvas.SetTop(image, item.Top);
-                                canvas.Children.Add(image);
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"An exception occurred in LoadSession_Click: {ex.Message}");
-            }
-
         }
 
         private void Image_MouseDown(object sender, MouseButtonEventArgs e)
@@ -342,9 +213,10 @@ namespace MyApplication
         {
             try
             {
-                //when mouse is released
+                // When mouse is released
                 if (e.LeftButton == MouseButtonState.Released || rectangle == null)
                     return;
+
                 // Get the current position of the mouse on the canvas
                 Point currentPosition = e.GetPosition(canvas);
 
@@ -388,154 +260,173 @@ namespace MyApplication
 
         private void Rectangle_MouseMove(object sender, MouseEventArgs e)
         {
-            if (canvas == null || image == null)
-            {
-                throw new NullReferenceException("Canvas or image is null in Rectangle_MouseMove method.");
-            }
-
-            Rectangle rectangle = sender as Rectangle;
-            if (rectangle == null)
-            {
-                throw new ArgumentException("Sender is not a Rectangle object in Rectangle_MouseMove method.");
-            }
-
-            if (isDragging)
-            {
-                // Get the position of the mouse relative to the canvas.
-                Point currentPosition = e.GetPosition(canvas);
-
-                double rectangleTopLeftX = Math.Min(currentPosition.X, clickPosition.X);
-                double rectangleTopLeftY = Math.Min(currentPosition.Y, clickPosition.Y);
-
-                double width = Math.Abs(currentPosition.X - clickPosition.X);
-                double height = Math.Abs(currentPosition.Y - clickPosition.Y);
-
-                // Calculate the offset from the position where the mouse was clicked.
-                double offsetX = currentPosition.X - clickPosition.X;
-                double offsetY = currentPosition.Y - clickPosition.Y;
-
-                // Update the position of the rectangle using the Canvas.Left and Canvas.Top attached properties.
-                Point rectangleNewPosition = new Point(Canvas.GetLeft(rectangle) + offsetX, Canvas.GetTop(rectangle) + offsetY);
-                if (rectangleNewPosition.X < 0) rectangleNewPosition.X = 0;
-                if (rectangleNewPosition.Y < 0) rectangleNewPosition.Y = 0;
-                if (rectangleNewPosition.X + rectangle.Width > image.Width) rectangleNewPosition.X = image.Width - rectangle.Width;
-                if (rectangleNewPosition.Y + rectangle.Height > image.Height) rectangleNewPosition.Y = image.Height - rectangle.Height;
-
-                if (double.IsNaN(rectangleNewPosition.X) || double.IsNaN(rectangleNewPosition.Y))
-                {
-                    throw new InvalidOperationException("Rectangle New Positon is NaN.");
-                }
-                Canvas.SetLeft(rectangle, rectangleNewPosition.X);
-                Canvas.SetTop(rectangle, rectangleNewPosition.Y);
-
-                // Remember the current position as the new click position.
-                clickPosition = currentPosition;
-            }
-        }
-
-        private void Rectangle_MouseRightDown(object sender, MouseButtonEventArgs e)
-        {
             try
             {
-                Rectangle rectangle = (Rectangle)sender;
-
-                // Create a new dropdown context menu
-                ContextMenu menu = new ContextMenu();
-
-                // Create a new "Change Color" menu item
-                MenuItem changeColorItem = new MenuItem();
-                changeColorItem.Header = "Change Color";
-                changeColorItem.Click += (s, args) =>
+                if (canvas == null || image == null)
                 {
-                    try
-                    {
-                        // Show a color dialog to select a new color
-                        System.Windows.Forms.ColorDialog colorDialog = new System.Windows.Forms.ColorDialog();
-                        if (colorDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                        {
-                            // Set the Fill property of the rectangle to the selected color
-                            Color color = Color.FromArgb(colorDialog.Color.A, colorDialog.Color.R, colorDialog.Color.G, colorDialog.Color.B);
-                            rectangle.Fill = new SolidColorBrush(color);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        // Handle any exception that may occur while changing the color of the rectangle
-                        MessageBox.Show($"An error occurred while changing the color of the rectangle: {ex.Message}");
-                    }
-                };
-                menu.Items.Add(changeColorItem);
+                    throw new NullReferenceException("Canvas or image is null in Rectangle_MouseMove method.");
+                }
 
-                // Create a new "Remove Rectangle" menu item
-                MenuItem removeItem = new MenuItem();
-                removeItem.Header = "Remove Rectangle";
-                removeItem.Click += (s, args) =>
+                Rectangle rectangle = sender as Rectangle;
+                if (rectangle == null)
                 {
-                    try
-                    {
-                        // Remove the rectangle from the canvas
-                        canvas.Children.Remove(rectangle);
-                    }
-                    catch (Exception ex)
-                    {
-                        // Handle any exception that may occur while removing the rectangle from the canvas
-                        MessageBox.Show($"An error occurred while removing the rectangle: {ex.Message}");
-                    }
-                };
-                menu.Items.Add(removeItem);
+                    throw new ArgumentException("Sender is not a Rectangle object in Rectangle_MouseMove method.");
+                }
 
-                // Set the context menu of the rectangle to the new context menu
-                rectangle.ContextMenu = menu;
+                if (isDragging)
+                {
+                    // Get the position of the mouse relative to the canvas.
+                    Point currentPosition = e.GetPosition(canvas);
+
+                    double rectangleTopLeftX = Math.Min(currentPosition.X, clickPosition.X);
+                    double rectangleTopLeftY = Math.Min(currentPosition.Y, clickPosition.Y);
+
+                    double width = Math.Abs(currentPosition.X - clickPosition.X);
+                    double height = Math.Abs(currentPosition.Y - clickPosition.Y);
+
+                    // Calculate the offset from the position where the mouse was clicked.
+                    double offsetX = currentPosition.X - clickPosition.X;
+                    double offsetY = currentPosition.Y - clickPosition.Y;
+
+                    // Update the position of the rectangle using the Canvas.Left and Canvas.Top attached properties.
+                    Point rectangleNewPosition = new Point(Canvas.GetLeft(rectangle) + offsetX, Canvas.GetTop(rectangle) + offsetY);
+                    if (rectangleNewPosition.X < 0) rectangleNewPosition.X = 0;
+                    if (rectangleNewPosition.Y < 0) rectangleNewPosition.Y = 0;
+                    if (rectangleNewPosition.X + rectangle.Width > image.Width) rectangleNewPosition.X = image.Width - rectangle.Width;
+                    if (rectangleNewPosition.Y + rectangle.Height > image.Height) rectangleNewPosition.Y = image.Height - rectangle.Height;
+
+                    if (double.IsNaN(rectangleNewPosition.X) || double.IsNaN(rectangleNewPosition.Y))
+                    {
+                        throw new InvalidOperationException("Rectangle New Positon is NaN.");
+                    }
+                    Canvas.SetLeft(rectangle, rectangleNewPosition.X);
+                    Canvas.SetTop(rectangle, rectangleNewPosition.Y);
+
+                    // Remember the current position as the new click position.
+                    clickPosition = currentPosition;
+                }
             }
             catch (Exception ex)
             {
-                // Handle any exception that may occur while creating the context menu
-                MessageBox.Show($"An error occurred while creating the context menu: {ex.Message}");
+                MessageBox.Show($"An error occurred in Rectangle_MouseMove method: {ex.Message}");
             }
+
         }
+
+        private void Rectangle_MouseRightDown(object sender, MouseButtonEventArgs e)
+    {
+        try
+        {
+            Rectangle rectangle = (Rectangle)sender;
+
+            // Create a new dropdown context menu
+            ContextMenu menu = new ContextMenu();
+
+            // Create a new "Change Color" menu item
+            MenuItem changeColorItem = new MenuItem();
+            changeColorItem.Header = "Change Color";
+            changeColorItem.Click += (s, args) =>
+            {
+                try
+                {
+                    // Show a color dialog to select a new color
+                    System.Windows.Forms.ColorDialog colorDialog = new System.Windows.Forms.ColorDialog();
+                    if (colorDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                    {
+                        // Set the Fill property of the rectangle to the selected color
+                        Color color = Color.FromArgb(colorDialog.Color.A, colorDialog.Color.R, colorDialog.Color.G, colorDialog.Color.B);
+                        rectangle.Fill = new SolidColorBrush(color);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"An error occurred while changing the color of the rectangle: {ex.Message}");
+                }
+            };
+            menu.Items.Add(changeColorItem);
+
+            // Create a new "Remove Rectangle" menu item
+            MenuItem removeItem = new MenuItem();
+            removeItem.Header = "Remove Rectangle";
+            removeItem.Click += (s, args) =>
+            {
+                try
+                {
+                    canvas.Children.Remove(rectangle);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"An error occurred while removing the rectangle: {ex.Message}");
+                }
+            };
+            menu.Items.Add(removeItem);
+
+            // Set the context menu of the rectangle to the new context menu
+            rectangle.ContextMenu = menu;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"An error occurred while creating the context menu: {ex.Message}");
+        }
+    }
 
         private void Rectangle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (!(sender is Rectangle))
+            try
             {
-                // Handling the error condition appropriately
-                return;
+                if (!(sender is Rectangle))
+                {
+                    return;
+                }
+                Rectangle rectangle = (Rectangle)sender;
+
+                // Set the isDragging flag to true and remember the position where the mouse was clicked.
+                isDragging = true;
+                clickPosition = e.GetPosition(canvas);
+
+                // Change the cursor to a hand cursor to indicate that the rectangle can be dragged.
+                rectangle.Cursor = Cursors.Hand;
+
+                // Capture the mouse so that mouse events are still handled even if the mouse leaves the rectangle.
+                rectangle.CaptureMouse();
             }
-            Rectangle rectangle = (Rectangle)sender;
-            // Set the isDragging flag to true and remember the position where the mouse was clicked.
-            isDragging = true;
-            clickPosition = e.GetPosition(canvas);
-
-            // Change the cursor to a hand cursor to indicate that the rectangle can be dragged.
-            rectangle.Cursor = Cursors.Hand;
-
-            // Capture the mouse so that mouse events are still handled even if the mouse leaves the rectangle.
-            rectangle.CaptureMouse();
+            catch(Exception ex)
+            {
+                MessageBox.Show($"An error occurred in Rectangle_MouseLeftButtonDown: {ex.Message}");
+            }
+            
         }
 
         private void Rectangle_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (!(sender is Rectangle))
+            try
             {
-                // Handling the error condition appropriately
-                return;
-            }
-            Rectangle rectangle = (Rectangle)sender;
-            // Set the isDragging flag to false and restore the default cursor.
-            isDragging = false;
-            rectangle.Cursor = Cursors.Arrow;
+                if (!(sender is Rectangle))
+                {
+                    return;
+                }
+                Rectangle rectangle = (Rectangle)sender;
 
-            // Release the mouse capture.
-            rectangle.ReleaseMouseCapture();
+                // Set the isDragging flag to false and restore the default cursor.
+                isDragging = false;
+                rectangle.Cursor = Cursors.Arrow;
+
+                // Release the mouse capture.
+                rectangle.ReleaseMouseCapture();
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show($"An error occurred in Rectangle_MouseLeftButtonUp: {ex.Message}");
+            }
         }
 
         private void Save_ImageButton(object sender, RoutedEventArgs e)
         {
             try
             {
-                canvas.Children.Remove(myButton);
-                canvas.Children.Remove(saveSession);
-                canvas.Children.Remove(loadSession);
+                canvas.Children.Remove(saveImageButton);
+                canvas.Children.Remove(saveSessionButton);
+                canvas.Children.Remove(loadSessionButton);
 
                 RenderTargetBitmap bitmap = new RenderTargetBitmap((int)image.ActualWidth, (int)image.ActualHeight + 50, 96, 96, PixelFormats.Pbgra32);
 
@@ -568,56 +459,180 @@ namespace MyApplication
             }
             finally
             {
-                canvas.Children.Add(myButton);
-                canvas.Children.Add(saveSession);
-                canvas.Children.Add(loadSession);
-                
+                canvas.Children.Add(saveImageButton);
+                canvas.Children.Add(saveSessionButton);
+                canvas.Children.Add(loadSessionButton);
+
             }
         }
 
-        private void Button_Click(object sender, RoutedEventArgs e)
+        private void SaveSession_Click(object sender, RoutedEventArgs e)
         {
-           
-                // Open one or more files
-                OpenFileDialog dialog = new OpenFileDialog();
-                dialog.Filter = "Image files|*.bmp;*.jpg;*.png";
-                if (dialog.ShowDialog() == true)
+            try
+            {
+                var saveFileDialog = new SaveFileDialog();
+                saveFileDialog.Filter = "Binary files (.bin)|*.bin|All files (*.*)|*.*";
+                saveFileDialog.Title = "Save session data";
+                if (saveFileDialog.ShowDialog() == true)
                 {
-                    imageURI = new Uri(dialog.FileName);
-                    image.Source = new BitmapImage(imageURI);
-                    image.Stretch = Stretch.Fill;
+                    var filePath = saveFileDialog.FileName;
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        var sessionData = new SessionData { Items = new List<CanvasItem>() };
+
+                        // Store the data for each canvas item in the session data.
+                        foreach (var item in canvas.Children.OfType<FrameworkElement>())
+                        {
+                            var type = item.GetType().Name;
+                            if (type == "Rectangle" || type == "Button" || type == "Image")
+                            {
+                                var canvasItem = new CanvasItem
+                                {
+                                    Type = type,
+                                    Left = Canvas.GetLeft(item),
+                                    Top = Canvas.GetTop(item),
+                                    Width = item.Width,
+                                    Height = item.Height,
+                                    FillColor = new ColorData((item as Shape)?.Fill is SolidColorBrush solidColorBrush ? solidColorBrush.Color : Colors.Transparent),
+                                    Opacity = item.Opacity,
+                                    Content = (item as Button)?.Content as string,
+                                    ImageUri = (item as Image)?.Source?.ToString(),
+                                    HorizontalAlignment = (item as Button)?.HorizontalAlignment,
+                                    VerticalAlignment = (item as Button)?.VerticalAlignment,
+                                    Margin = (item as Button)?.Margin != null ? new SerializableThickness((item as Button).Margin) : new SerializableThickness()
+                                };
+                                sessionData.Items.Add(canvasItem);
+                            }
+                        }
+                        // Serialize the session data and write it to the file stream.
+                        var formatter = new BinaryFormatter();
+                        formatter.Serialize(stream, sessionData);
+                    }
                 }
-
-                // Set the button's properties
-                myButton.Content = "Save Image";
-                myButton.Margin = new Thickness(10);
-                myButton.Click += Save_ImageButton; 
-
-                
-                saveSession.Content = "Save Session";
-                saveSession.Margin = new Thickness(100,10,30,30);
-                saveSession.Click += SaveSession_Click;
-
-
-                loadSession.Content = "Load Session";
-                loadSession.Margin = new Thickness(200, 10, 30, 30);
-                loadSession.Click += LoadSession_Click;
-
-
-                // Add the button to the canvas
-                canvas.Children.Add(myButton);
-                canvas.Children.Add(saveSession);
-                canvas.Children.Add(loadSession);
-
-            
-            
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An exception occurred in SaveSession_Click: {ex.Message}");
+            }
         }
 
+        private void LoadSession_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var openFileDialog = new OpenFileDialog();
+                openFileDialog.Filter = "Binary files (.bin)|*.bin|All files (*.*)|*.*";
+                openFileDialog.Title = "Load session data";
+                if (openFileDialog.ShowDialog() == true)
+                {
+                    var filePath = openFileDialog.FileName;
+                    using (var stream = new FileStream(filePath, FileMode.Open))
+                    {
+                        var formatter = new BinaryFormatter();
+                        stream.Position = 0;
+                        var sessionData = formatter.Deserialize(stream) as SessionData;
+                       
+                        // Remove existing canvas items
+                        canvas.Children.Clear();
+
+                        // Add the canvas items stored in the session data
+                        foreach (var item in sessionData.Items)
+                        {
+                            if (item.Type == "Rectangle")
+                            {
+                                var rect = new Rectangle
+                                {
+                                    Width = item.Width,
+                                    Height = item.Height,
+                                    Fill = new SolidColorBrush(item.FillColor.ToColor()),
+                                    Opacity = item.Opacity,
+                                };
+                                // rect.Loaded += Rectangle_Loaded;
+                                rect.MouseRightButtonDown += Rectangle_MouseRightDown;
+                                rect.MouseLeftButtonDown += Rectangle_MouseLeftButtonDown;
+                                rect.MouseMove += Rectangle_MouseMove;
+                                rect.MouseLeftButtonUp += Rectangle_MouseLeftButtonUp;
+
+                                Canvas.SetLeft(rect, item.Left);
+                                Canvas.SetTop(rect, item.Top);
+                                canvas.Children.Add(rect);
+
+                            }
+                            else if (item.Type == "Button")
+                            {
+                                var button = new Button
+                                {
+                                    Margin = item.Margin.ToThickness(),
+                                    Content = item.Content,
+                                    HorizontalAlignment = item.HorizontalAlignment ?? HorizontalAlignment.Left,
+                                    VerticalAlignment = item.VerticalAlignment ?? VerticalAlignment.Top,
+                                    Opacity = item.Opacity,
+                                    Width = item.Width,
+                                    Height = item.Height
+
+                                };
+                                if (button.Content.ToString() == "Save Image")
+                                {
+                                    canvas.Children.Remove(saveImageButton);
+                                    canvas.Children.Remove(saveSessionButton);
+                                    canvas.Children.Remove(loadSessionButton);
+
+                                    button.Click += Save_ImageButton;
+
+                                    canvas.Children.Add(saveImageButton);
+                                    canvas.Children.Add(saveSessionButton);
+                                    canvas.Children.Add(loadSessionButton);
+                                }
+                                if (button.Content.ToString() == "Save Session")
+                                {
+                                    button.Click += SaveSession_Click;
+                                }
+                                if (button.Content.ToString() == "Load Session")
+                                {
+                                    button.Click += LoadSession_Click;
+                                }
+
+                                Canvas.SetLeft(button, item.Left);
+                                Canvas.SetTop(button, item.Top);
+                                canvas.Children.Add(button);
+                            }
+                            else if (item.Type == "Image")
+                            {
+                                var image = new Image
+                                {
+                                    Width = item.Width,
+                                    Height = item.Height,
+                                    Opacity = item.Opacity,
+                                    Source = new BitmapImage(new Uri(item.ImageUri)),
+                                    Stretch = Stretch.Fill
+                                };
+
+                                image.MouseDown += Image_MouseDown;
+                                image.MouseMove += Image_MouseMove;
+                                image.MouseUp += Image_MouseUp;
+                                Canvas.SetLeft(image, item.Left);
+                                Canvas.SetTop(image, item.Top);
+                                canvas.Children.Add(image);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An exception occurred in LoadSession_Click: {ex.Message}");
+            }
+
+        }
 
         private void Rectangle_Loaded(object sender, RoutedEventArgs e)
         {
+            image = canvas.Children.OfType<Image>().FirstOrDefault();
+            if (image == null)
+            {
+                throw new Exception("Image not found in canvas.");
+            }
             ResizeAdorner resizeAdorner = new ResizeAdorner(rectangle, image, new Point(2, 2));
-
             AdornerLayer adornerLayer = AdornerLayer.GetAdornerLayer(image);
             if (adornerLayer != null)
             {
@@ -625,7 +640,7 @@ namespace MyApplication
             }
             else
             {
-                Console.WriteLine("AdornerLayer is null.");
+                throw new Exception("AdornerLayer is null.");
             }
         }
 
@@ -636,7 +651,7 @@ namespace MyApplication
         VisualCollection AdornerVisuals;
 
         // Declaring thumbs for corners of rectangle
-        Thumb topLeftThumb, bottomRightThumb, bottomLeftThumb, topRightThumb; 
+        Thumb topLeftThumb, bottomRightThumb, bottomLeftThumb, topRightThumb;
 
         // Declaring thumbs for sides of rectangle
         Thumb topEdgeThumb, bottomEdgeThumb, leftEdgeThumb, rightEdgeThumb;
@@ -685,7 +700,6 @@ namespace MyApplication
 
         }
 
-        
         private bool Is_OutOfBounds(Point rectangleTopLeft, Point newDimensions)
         {
             // Checking if the rectangle is going out of the image boundaries
@@ -720,7 +734,6 @@ namespace MyApplication
             }
         }
 
-
         private void LeftEdge_ThumbDragDelta(object sender, DragDeltaEventArgs e)
         {
             try
@@ -745,7 +758,6 @@ namespace MyApplication
             }
         }
 
-
         private void TopEdge_ThumbDragDelta(object sender, DragDeltaEventArgs e)
         {
             try
@@ -769,7 +781,6 @@ namespace MyApplication
                 Console.WriteLine("An error occurred in TopEdge_ThumbDragDelta: " + ex.Message);
             }
         }
-
 
         private void BottomEdge_ThumbDragDelta(object sender, DragDeltaEventArgs e)
         {
@@ -845,7 +856,7 @@ namespace MyApplication
             }
         }
 
-        private void BottomLeft_ThumbDragDelta(object sender, DragDeltaEventArgs e) //bottom left
+        private void BottomLeft_ThumbDragDelta(object sender, DragDeltaEventArgs e) 
         {
             try
             {
@@ -871,8 +882,7 @@ namespace MyApplication
             }
         }
 
-
-        private void TopRight_ThumbDragDelta(object sender, DragDeltaEventArgs e) //bottom left
+        private void TopRight_ThumbDragDelta(object sender, DragDeltaEventArgs e) 
         {
             try
             {
@@ -898,25 +908,24 @@ namespace MyApplication
             }
         }
 
-
         protected override Visual GetVisualChild(int index)
         {
             return AdornerVisuals[index];
         }
 
         protected override int VisualChildrenCount => AdornerVisuals.Count;
-       
+
         protected override Size ArrangeOverride(Size finalSize)
         {
 
             topLeftThumb.Arrange(new Rect(-5, -5, 10, 10));
-            bottomRightThumb.Arrange(new Rect(AdornedElement.DesiredSize.Width - 5, AdornedElement.DesiredSize.Height - 5, 10, 10)); 
-            bottomLeftThumb.Arrange(new Rect(- 5, AdornedElement.DesiredSize.Height - 5, 10, 10)); 
-            topRightThumb.Arrange(new Rect(AdornedElement.DesiredSize.Width - 5, - 5, 10, 10)); 
+            bottomRightThumb.Arrange(new Rect(AdornedElement.DesiredSize.Width - 5, AdornedElement.DesiredSize.Height - 5, 10, 10));
+            bottomLeftThumb.Arrange(new Rect(-5, AdornedElement.DesiredSize.Height - 5, 10, 10));
+            topRightThumb.Arrange(new Rect(AdornedElement.DesiredSize.Width - 5, -5, 10, 10));
 
             topEdgeThumb.Arrange(new Rect((AdornedElement.DesiredSize.Width / 2) - 5, -5, 10, 10));
             bottomEdgeThumb.Arrange(new Rect((AdornedElement.DesiredSize.Width / 2) - 5, AdornedElement.DesiredSize.Height - 5, 10, 10));
-            rightEdgeThumb.Arrange(new Rect(AdornedElement.DesiredSize.Width-5, (AdornedElement.DesiredSize.Height / 2) - 5, 10, 10));
+            rightEdgeThumb.Arrange(new Rect(AdornedElement.DesiredSize.Width - 5, (AdornedElement.DesiredSize.Height / 2) - 5, 10, 10));
             leftEdgeThumb.Arrange(new Rect(-5, (AdornedElement.DesiredSize.Height / 2) - 5, 10, 10));
 
             return base.ArrangeOverride(finalSize);
