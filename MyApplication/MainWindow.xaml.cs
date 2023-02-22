@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using System;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -9,13 +10,110 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
-
+using System.Xml.Serialization;
+using System.Runtime.Serialization;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace MyApplication
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
+    [Serializable]
+    public class CanvasItem
+    {
+        public string Type { get; set; }
+        public double Left { get; set; }
+        public double Top { get; set; }
+        public double Width { get; set; }
+        public double Height { get; set; }
+
+        public SerializableThickness Margin { get; set; }
+        public ColorData FillColor { get; set; }
+        public double Opacity { get; set; }
+        public string Content { get; set; }
+        public string ImageUri { get; set; }
+        public HorizontalAlignment? HorizontalAlignment { get; internal set; }
+        public VerticalAlignment? VerticalAlignment { get; internal set; }
+    }
+
+    [Serializable]
+    public class SessionData
+    {
+        public List<CanvasItem> Items { get; set; }
+    }
+
+    
+
+
+    [Serializable]
+    public class ColorData
+    {
+        public byte A { get; set; }
+        public byte R { get; set; }
+        public byte G { get; set; }
+        public byte B { get; set; }
+
+        public ColorData(SolidColorBrush solidColorBrush)
+        {
+        }
+
+        public ColorData(Color color)
+        {
+            A = color.A;
+            R = color.R;
+            G = color.G;
+            B = color.B;
+        }
+
+        public Color ToColor()
+        {
+            return Color.FromArgb(A, R, G, B);
+        }
+    }
+
+    [Serializable]
+    public class SerializableThickness : ISerializable
+    {
+        public double Left { get; set; }
+        public double Top { get; set; }
+        public double Right { get; set; }
+        public double Bottom { get; set; }
+
+        public SerializableThickness() { }
+
+        public SerializableThickness(Thickness thickness)
+        {
+            Left = thickness.Left;
+            Top = thickness.Top;
+            Right = thickness.Right;
+            Bottom = thickness.Bottom;
+        }
+
+        public Thickness ToThickness()
+        {
+            return new Thickness(Left, Top, Right, Bottom);
+        }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("Left", Left);
+            info.AddValue("Top", Top);
+            info.AddValue("Right", Right);
+            info.AddValue("Bottom", Bottom);
+        }
+
+        protected SerializableThickness(SerializationInfo info, StreamingContext context)
+        {
+            Left = info.GetDouble("Left");
+            Top = info.GetDouble("Top");
+            Right = info.GetDouble("Right");
+            Bottom = info.GetDouble("Bottom");
+        }
+    }
+
+    [Serializable]
     public partial class MainWindow : Window
     {
         private Point startPoint;
@@ -23,10 +121,153 @@ namespace MyApplication
         private bool isDragging;
         private Point clickPosition;
         Button myButton;
+        Button saveSession;
+        Button loadSession;
+        private Uri imageURI;
         public MainWindow()
         {
             InitializeComponent();
             myButton = new Button();
+            saveSession = new Button();
+            loadSession = new Button();
+        }
+
+        private void SaveSession_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var saveFileDialog = new SaveFileDialog();
+                saveFileDialog.Filter = "Binary files (.bin)|*.bin|All files (*.*)|*.*";
+                saveFileDialog.Title = "Save session data";
+                if (saveFileDialog.ShowDialog() == true)
+                {
+                    var filePath = saveFileDialog.FileName;
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        var sessionData = new SessionData { Items = new List<CanvasItem>() };
+
+                        // Store the data for each canvas item in the session data.
+                        foreach (var item in canvas.Children.OfType<FrameworkElement>())
+                        {
+                            var type = item.GetType().Name;
+                            if (type == "Rectangle" || type == "Button" || type == "Image")
+                            {
+                                var canvasItem = new CanvasItem
+                                {
+                                    Type = type,
+                                    Left = Canvas.GetLeft(item),
+                                    Top = Canvas.GetTop(item),
+                                    Width = item.Width,
+                                    Height = item.Height,
+                                    FillColor = new ColorData((item as Shape)?.Fill is SolidColorBrush solidColorBrush ? solidColorBrush.Color : Colors.Transparent),
+                                    Opacity = item.Opacity,
+                                    Content = (item as Button)?.Content as string,
+                                    ImageUri = (item as Image)?.Source?.ToString(),
+                                    HorizontalAlignment = (item as Button)?.HorizontalAlignment,
+                                    VerticalAlignment = (item as Button)?.VerticalAlignment,
+                                    Margin = (item as Button)?.Margin != null ? new SerializableThickness((item as Button).Margin) : new SerializableThickness()
+                                };
+                                sessionData.Items.Add(canvasItem);
+                            }
+                        }
+                        // Serialize the session data and write it to the file stream.
+                        var formatter = new BinaryFormatter();
+                        formatter.Serialize(stream, sessionData);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An exception occurred in SaveSession_Click: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+            }
+        }
+
+        private void LoadSession_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var openFileDialog = new OpenFileDialog();
+                openFileDialog.Filter = "Binary files (.bin)|*.bin|All files (*.*)|*.*";
+                openFileDialog.Title = "Load session data";
+                if (openFileDialog.ShowDialog() == true)
+                {
+                    var filePath = openFileDialog.FileName;
+                    using (var stream = new FileStream(filePath, FileMode.Open))
+                    {
+                        var formatter = new BinaryFormatter();
+                        stream.Position = 0;
+                        var sessionData = formatter.Deserialize(stream) as SessionData;
+
+                        // Remove existing canvas items
+                        canvas.Children.Clear();
+
+                        // Add the canvas items stored in the session data
+                        foreach (var item in sessionData.Items)
+                        {
+                            if (item.Type == "Rectangle")
+                            {
+                                var rect = new Rectangle
+                                {
+                                    Width = item.Width,
+                                    Height = item.Height,
+                                    Fill = new SolidColorBrush(item.FillColor.ToColor()),
+                                    Opacity = item.Opacity,
+                                };
+                                
+                                /*
+                                rect.Loaded += Rectangle_Loaded;
+                                rect.MouseRightButtonDown += Rectangle_MouseRightDown;
+                                rect.MouseLeftButtonDown += Rectangle_MouseLeftButtonDown;
+                                rect.MouseMove += Rectangle_MouseMove;
+                                rect.MouseLeftButtonUp += Rectangle_MouseLeftButtonUp;
+                                */
+                                Canvas.SetLeft(rect, item.Left);
+                                Canvas.SetTop(rect, item.Top);
+                                canvas.Children.Add(rect);
+
+                            }
+                            else if (item.Type == "Button")
+                            {
+                                var button = new Button
+                                {
+                                    Margin = item.Margin.ToThickness(),
+                                    Content = item.Content,
+                                    HorizontalAlignment = item.HorizontalAlignment ?? HorizontalAlignment.Left,
+                                    VerticalAlignment = item.VerticalAlignment ?? VerticalAlignment.Top,
+                                    Opacity = item.Opacity,
+                                    Width = item.Width,
+                                    Height = item.Height
+
+                                };
+                                
+                                Canvas.SetLeft(button, item.Left);
+                                Canvas.SetTop(button, item.Top);
+                                canvas.Children.Add(button);
+                            }
+                            else if (item.Type == "Image")
+                            {
+                                var image = new Image
+                                {
+                                    Width = item.Width,
+                                    Height = item.Height,
+                                    Opacity = item.Opacity,
+                                    Source = new BitmapImage(new Uri(item.ImageUri)),
+                                    Stretch = Stretch.Fill
+                                };
+                                Canvas.SetLeft(image, item.Left);
+                                Canvas.SetTop(image, item.Top);
+                                canvas.Children.Add(image);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An exception occurred in LoadSession_Click: {ex.Message}");
+            }
+
         }
 
         private void Image_MouseDown(object sender, MouseButtonEventArgs e)
@@ -45,8 +286,6 @@ namespace MyApplication
                 };
 
                 rectangle.Loaded += Rectangle_Loaded;
-
-                // Add event handler for Color changing and moving the rectangle
                 rectangle.MouseRightButtonDown += Rectangle_MouseRightDown;
                 rectangle.MouseLeftButtonDown += Rectangle_MouseLeftButtonDown;
                 rectangle.MouseMove += Rectangle_MouseMove;
@@ -309,43 +548,40 @@ namespace MyApplication
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            try
-            {
+           
                 // Open one or more files
                 OpenFileDialog dialog = new OpenFileDialog();
                 dialog.Filter = "Image files|*.bmp;*.jpg;*.png";
                 if (dialog.ShowDialog() == true)
                 {
-                    image.Source = new BitmapImage(new Uri(dialog.FileName));
+                    imageURI = new Uri(dialog.FileName);
+                    image.Source = new BitmapImage(imageURI);
                     image.Stretch = Stretch.Fill;
                 }
 
                 // Set the button's properties
                 myButton.Content = "Save Image";
                 myButton.Margin = new Thickness(10);
-                myButton.Click += Save_ImageButton; // assign an event handler for the Click event
+                myButton.Click += Save_ImageButton; 
+
+                
+                saveSession.Content = "Save Session";
+                saveSession.Margin = new Thickness(100,10,30,30);
+                saveSession.Click += SaveSession_Click;
+
+
+                loadSession.Content = "Load Session";
+                loadSession.Margin = new Thickness(200, 10, 30, 30);
+                loadSession.Click += LoadSession_Click;
+
 
                 // Add the button to the canvas
                 canvas.Children.Add(myButton);
-            }
-            catch (System.ComponentModel.Win32Exception ex)
-            {
-                // Display an error message box and log the exception
-                MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                Console.WriteLine("Error: " + ex.Message);
-            }
-            catch (System.ArgumentException ex)
-            {
-                // Display an error message box and log the exception
-                MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                Console.WriteLine("Error: " + ex.Message);
-            }
-            catch (System.UriFormatException ex)
-            {
-                // Display an error message box and log the exception
-                MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                Console.WriteLine("Error: " + ex.Message);
-            }
+                canvas.Children.Add(saveSession);
+                canvas.Children.Add(loadSession);
+
+            
+            
         }
 
 
@@ -357,6 +593,7 @@ namespace MyApplication
         }
     }
 
+    [Serializable]
     public class ResizeAdorner : Adorner
     {
         VisualCollection AdornerVisuals;
