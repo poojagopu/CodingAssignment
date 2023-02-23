@@ -117,7 +117,7 @@ The following are the implementation details of the different features:
     - It then removes any existing canvas items and adds the canvas items stored in the SessionData object to the canvas. 
     - If any exception occurs during the process, the function catches it and prints an error message to the console.
     
-##Resources
+## Resources
 
 - https://learn.microsoft.com/en-us/dotnet/desktop/wpf/?view=netdesktop-7.0
 - https://www.youtube.com/watch?v=ddVXKMpWGME
