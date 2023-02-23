@@ -116,3 +116,13 @@ The following are the implementation details of the different features:
     - It opens an OpenFileDialog to allow the user to select the file to be loaded. If a file is selected, the function creates a FileStream and uses BinaryFormatter to deserialize the data in the file into a SessionData object. 
     - It then removes any existing canvas items and adds the canvas items stored in the SessionData object to the canvas. 
     - If any exception occurs during the process, the function catches it and prints an error message to the console.
+    
+##Resources
+
+- https://learn.microsoft.com/en-us/dotnet/desktop/wpf/?view=netdesktop-7.0
+- https://www.youtube.com/watch?v=ddVXKMpWGME
+- https://learn.microsoft.com/en-us/dotnet/standard/events/
+- https://www.c-sharpcorner.com/UploadFile/201fc1/handling-events-in-wpf-in-an-easy-and-short-hand-way/
+- https://www.c-sharpcorner.com/UploadFile/mahesh/using-xaml-image-in-wpf/
+- https://learn.microsoft.com/en-us/dotnet/csharp/
+- https://www.devcoons.com/c-wpf-canvas-move-shapes-around/
