@@ -1,0 +1,7 @@
+https://learn.microsoft.com/en-us/dotnet/desktop/wpf/?view=netdesktop-7.0
+https://www.youtube.com/watch?v=ddVXKMpWGME
+https://learn.microsoft.com/en-us/dotnet/standard/events/
+https://www.c-sharpcorner.com/UploadFile/201fc1/handling-events-in-wpf-in-an-easy-and-short-hand-way/
+https://www.c-sharpcorner.com/UploadFile/mahesh/using-xaml-image-in-wpf/
+https://learn.microsoft.com/en-us/dotnet/csharp/
+https://www.devcoons.com/c-wpf-canvas-move-shapes-around/
