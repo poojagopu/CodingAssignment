@@ -132,7 +132,7 @@ namespace MyApplication
             {
                 // Open image file
                 OpenFileDialog dialog = new OpenFileDialog();
-                dialog.Filter = "Image files|.bmp;.jpg;*.png";
+                dialog.Filter = "Image files|*.bmp;*.jpg;*.png";
                 if (dialog.ShowDialog() == true)
                 {
                     imageURI = new Uri(dialog.FileName);
